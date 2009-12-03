@@ -1,0 +1,36 @@
+lqt-analytics.pl
+
+An analytics tool for MediaWiki's LiquidThreads extension.
+
+INSTALLATION
+
+This script uses the Text::CSV module.
+
+USAGE
+
+    lqt-analytics.pl [-dt]
+
+        -d -- Date statistics
+        -t -- Time statistics
+
+SUPPORT AND DOCUMENTATION
+
+For documentation, run:
+
+    perldoc lqt-analytics.pl
+
+AUTHOR
+
+Eugene Eric Kim <eekim@blueoxen.com>
+
+ACKNOWLEDGEMENTS
+
+Many thanks to Andrew Garrett <agarrett@wikimedia.org> for creating
+the LiquidThreads tool.
+
+COPYRIGHT AND LICENSE
+
+(C) Copyright 2009 Blue Oxen Associates.  All rights reserved.
+
+This program is free software; you can redistribute it and/or modify it
+under the same terms as Perl itself.

@@ -1,0 +1,21 @@
+LiquidThreads MySQL Schema
+
+CREATE TABLE thread (
+  thread_id int(8) unsigned,
+  thread_root int(8) unsigned,              # page ID of root post?
+  thread_ancestor int(8) unsigned,          # 0 when root
+  thread_parent int(8) unsigned,            # NULL when root
+  thread_summary_page int(8) unsigned,
+  thread_subject varchar(255),
+  thread_author_id int(10) unsigned,
+  thread_author_name varchar(255),
+  thread_modified varchar(14) binary,
+  thread_created varchar(14) binary,
+  thread_editedness int(1),                 # ?
+  thread_article_namespace int(11),
+  thread_article_title varchar(255) binary,
+  thread_article_id int(8) unsigned,
+  thread_type int(4) unsigned,              # ?
+  thread_sortkey varchar(255),              # ?
+  thread_replies int(8)
+)
