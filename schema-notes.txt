@@ -9,7 +9,7 @@ CREATE TABLE thread (
   thread_subject varchar(255),
   thread_author_id int(10) unsigned,
   thread_author_name varchar(255),
-  thread_modified varchar(14) binary,
+  thread_modified varchar(14) binary,       # mods include replies, etc.
   thread_created varchar(14) binary,
   thread_editedness int(1),                 # ?
   thread_article_namespace int(11),
