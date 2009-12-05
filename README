@@ -2,16 +2,12 @@ lqt-analytics.pl
 
 An analytics tool for MediaWiki's LiquidThreads extension.
 
-INSTALLATION
-
-This script uses the Text::CSV::Encoded module.
-
 USAGE
 
     lqt-analytics.pl [-dt]
 
-        -d -- Date statistics
-        -t -- Time statistics
+        -d -- Date statistics in CSV
+        -t -- Time statistics in CSV
 
 SUPPORT AND DOCUMENTATION
 

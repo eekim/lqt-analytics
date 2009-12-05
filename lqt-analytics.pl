@@ -3,14 +3,12 @@
 # lqt-analytics.pl
 #
 # TO DO:
-# - proper CSV support
 # - timeline of thread activity
 # - author reports
 
 use strict;
 use DBI;
 use Getopt::Std;
-use Text::CSV::Encoded;
 
 # config
 my $DB = 'liquidthreads';
@@ -83,20 +81,21 @@ foreach my $t (@threads) {
 # print stats
 my $num_threads = @threads;
 my $num_authors = scalar keys %authors;
-my $csv = Text::CSV::Encoded->new( { encoding => 'utf8' } );
 
 if ($opt_d) {
-    $csv->column_names('date', 'posts');
+    my $i = 1;
+    my $subtotal = 0;
+    print "Date,Posts,Mean\n";
     foreach my $d (sort keys %date) {
-        $csv->print(\*STDOUT, [ $d, $date{$d} ]);
-        print "\n";
+        $subtotal += $date{$d};
+        printf("%s,%d,%.2f\n", $d, $date{$d}, $subtotal / $i);
+        $i++;
     }
 }
 elsif ($opt_t) {
-    $csv->column_names('time', 'posts');
+    print "Time,Posts\n";
     foreach my $t (sort keys %time) {
-        $csv->print(\*STDOUT, [ $t, $time{$t} ]);
-        print "\n";
+        printf("%s, %d\n", $t, $time{$t});
     }
 }
 else {
