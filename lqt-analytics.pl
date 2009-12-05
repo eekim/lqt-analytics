@@ -10,7 +10,7 @@
 use strict;
 use DBI;
 use Getopt::Std;
-use Text::CSV;
+use Text::CSV::Encoded;
 
 # config
 my $DB = 'liquidthreads';
@@ -83,20 +83,21 @@ foreach my $t (@threads) {
 # print stats
 my $num_threads = @threads;
 my $num_authors = scalar keys %authors;
+my $csv = Text::CSV::Encoded->new( { encoding => 'utf8' } );
 
 if ($opt_d) {
-    print join(',', sort keys %date) . "\n";
+    $csv->column_names('date', 'posts');
     foreach my $d (sort keys %date) {
-        print $date{$d} . ',';
+        $csv->print(\*STDOUT, [ $d, $date{$d} ]);
+        print "\n";
     }
-    print "\n";
 }
 elsif ($opt_t) {
-    print join(',', sort keys %time) . "\n";
+    $csv->column_names('time', 'posts');
     foreach my $t (sort keys %time) {
-        print $time{$t} . ',';
+        $csv->print(\*STDOUT, [ $t, $time{$t} ]);
+        print "\n";
     }
-    print "\n";
 }
 else {
     print "$num_threads threads\n";

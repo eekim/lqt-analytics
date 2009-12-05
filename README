@@ -4,7 +4,7 @@ An analytics tool for MediaWiki's LiquidThreads extension.
 
 INSTALLATION
 
-This script uses the Text::CSV module.
+This script uses the Text::CSV::Encoded module.
 
 USAGE
 
