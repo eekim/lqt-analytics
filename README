@@ -4,8 +4,9 @@ An analytics tool for MediaWiki's LiquidThreads extension.
 
 USAGE
 
-    lqt-analytics.pl [-dt]
+    lqt-analytics.pl [-adt]
 
+        -a -- Author statistics in CSV
         -d -- Date statistics in CSV
         -t -- Time statistics in CSV
 

@@ -23,10 +23,11 @@ my %date;
 my %time;
 
 # command-line parameters
+our $opt_a;
 our $opt_d;
 our $opt_t;
 
-getopts('dt');
+getopts('adt');
 
 # parse database
 my $dbh = DBI->connect("DBI:mysql:database=$DB", $DB_USER, $DB_PW);
@@ -39,12 +40,8 @@ foreach my $r (@t) {
     $time{$hour}++;
 
     # update author index
-    if ($authors{$r->[7]}) {
-        push @{$authors{$r->[7]}}, "$year-$month-$day";
-    }
-    else {
-        $authors{$r->[7]} = [];
-    }
+    $authors{$r->[7]} = [] if (!$authors{$r->[7]});
+    push @{$authors{$r->[7]}}, "$year-$month-$day";
 
     # build threads and posts
     $posts{$r->[0]} = &update_post($posts{$r->[0]}, $r->[9], $r->[8], $r->[7], $r->[13]);
@@ -98,6 +95,13 @@ elsif ($opt_t) {
         printf("%s, %d\n", $t, $time{$t});
     }
 }
+elsif ($opt_a) {
+    print "Author,Posts,Days Posted,Posts/Day\n";
+    foreach my $a (sort keys %authors) {
+        my ($t, $posts_day, $dates) = &author_stats($authors{$a});
+        printf("%s,%d,%d,%.2f\n", $a, $t, scalar keys %{$dates}, $posts_day);
+    }
+}
 else {
     print "$num_threads threads\n";
     print "$total_size total posts\n";
@@ -140,6 +144,19 @@ sub traverse_thread {
           }
     }
     return ($size, $depth, $authors);
+}
+
+sub author_stats {
+    my @author_dates = @{shift()};
+
+    my $total = 0;
+    my %dates;
+    foreach my $d (@author_dates) {
+        $total++;
+        $dates{$d} = $dates{$d} ? $dates{$d} + 1 : 0;
+    }
+    my $days = keys %dates;
+    return ($total, $total / $days, \%dates);
 }
 
 __END__
