@@ -5,10 +5,17 @@
 # TO DO:
 # - timeline of thread activity
 # - author reports
+# - mean and median response times
+# - social network graphs
+#   - thread buddies
+#   - response buddies
+# - when certain people post, are people more likely to respond?
 
 use strict;
 use DBI;
 use Getopt::Std;
+use Statistics::Basic qw(:all);
+use Time::Local;
 
 # config
 my $DB = 'liquidthreads';
@@ -36,15 +43,21 @@ my @t = @{$dbh->selectall_arrayref('SELECT * FROM thread')};
 foreach my $r (@t) {
     # update date and time indices
     my ($year, $month, $day, $hour, $minutes) = &parse_date($r->[9]);
-    $date{"$year-$month-$day"}++;
+    if (!$date{"$year-$month-$day"}) {
+        $date{"$year-$month-$day"}->{posts} = 0;
+        $date{"$year-$month-$day"}->{authors} = {};
+    }
+    $date{"$year-$month-$day"}->{posts}++;
+    $date{"$year-$month-$day"}->{authors}->{$r->[7]}++;
     $time{$hour}++;
 
     # update author index
-    $authors{$r->[7]} = [] if (!$authors{$r->[7]});
-    push @{$authors{$r->[7]}}, "$year-$month-$day";
+    $authors{$r->[7]} = {} if (!$authors{$r->[7]});
+    $authors{$r->[7]}->{posts} = [] if (!$authors{$r->[7]}->{posts});
+    push @{$authors{$r->[7]}->{posts}}, "$year-$month-$day";
 
     # build threads and posts
-    $posts{$r->[0]} = &update_post($posts{$r->[0]}, $r->[9], $r->[8], $r->[7], $r->[13]);
+    $posts{$r->[0]} = &update_post($posts{$r->[0]}, $r->[9], $r->[7], $r->[13]);
     if ($r->[2] eq '0') { # root!
         push @threads, { root_id => $r->[0] };
     }
@@ -58,6 +71,8 @@ foreach my $r (@t) {
 my $total_size = 0;
 my $total_depth = 0;
 my $total_unique_authors = 0;
+my $total_response_time = 0;
+my $total_responses = 0;
 my $biggest_size = 0;
 my $biggest_depth = 0;
 my $most_authors = 0;
@@ -81,11 +96,16 @@ my $num_authors = scalar keys %authors;
 
 if ($opt_d) {
     my $i = 1;
-    my $subtotal = 0;
-    print "Date,Posts,Mean\n";
+    my $posts_subtotal = 0;
+    my $authors_subtotal = 0;
+    print "Date,Posts,Mean Posts,Contributors,Mean Contributors\n";
     foreach my $d (sort keys %date) {
-        $subtotal += $date{$d};
-        printf("%s,%d,%.2f\n", $d, $date{$d}, $subtotal / $i);
+        $posts_subtotal += $date{$d}->{posts};
+        $authors_subtotal += scalar keys %{$date{$d}->{authors}};
+        printf("%s,%d,%.2f,%d,%2.f\n", $d, $date{$d}->{posts},
+               $posts_subtotal / $i,
+               scalar keys %{$date{$d}->{authors}},
+               $authors_subtotal / $i);
         $i++;
     }
 }
@@ -96,10 +116,11 @@ elsif ($opt_t) {
     }
 }
 elsif ($opt_a) {
-    print "Author,Posts,Days Posted,Posts/Day\n";
+    print "Author,Posts,Days Posted,Posts/Day,Mean Response Time\n";
     foreach my $a (sort keys %authors) {
-        my ($t, $posts_day, $dates) = &author_stats($authors{$a});
-        printf("%s,%d,%d,%.2f\n", $a, $t, scalar keys %{$dates}, $posts_day);
+        my ($t, $days, $mean_response_time) = &author_stats($a);
+        printf("%s,%d,%d,%.2f,%d\n", $a, $t, $days, $t / $days,
+               $mean_response_time);
     }
 }
 else {
@@ -110,14 +131,41 @@ else {
     printf("%.2f unique authors/thread (most is %d)\n", $total_unique_authors / $num_threads, $most_authors);
     print "$num_authors authors\n";
     printf("%.2f posts/author\n", $total_size / $num_authors);
+    printf("Average time to respond is %s\n", &ts2diff(int($total_response_time / $total_responses)));
 }
 # fini
 
 sub parse_date {
     my $ts = shift;
 
-    $ts =~ /^(\d\d\d\d)(\d\d)(\d\d)(\d\d)(\d\d)/;
-    return ($1, $2, $3, $4, $5);
+    $ts =~ /^(\d\d\d\d)(\d\d)(\d\d)(\d\d)(\d\d)(\d\d)/;
+    return ($1, $2, $3, $4, $5, $6);
+}
+
+sub diff_ts {
+    my ($tm1, $tm2) = @_;
+
+    my ($year, $month, $mday, $hour, $minutes, $seconds) = &parse_date($tm1);
+    my $ts1 = timelocal($seconds, $minutes, $hour, $mday, $month - 1, $year);
+    my ($year, $month, $mday, $hour, $minutes, $seconds) = &parse_date($tm2);
+    my $ts2 = timelocal($seconds, $minutes, $hour, $mday, $month - 1, $year);
+    return abs($ts2 - $ts1);
+}
+
+sub ts2diff {
+    my $ts = shift;
+
+    my $seconds = $ts % 60;
+    $ts = ($ts - $seconds) / 60;
+    my $minutes = $ts % 60;
+    $ts = ($ts - $minutes) / 60;
+    my $hours = $ts % 24;
+    $ts = ($ts - $hours) / 24;
+    my $days = $ts % 7;
+    my $weeks = ($ts - $days) / 7;
+
+    return sprintf("%d weeks, %d days, %02d:%02d:%02d",
+                   $weeks, $days, $hours, $minutes, $seconds);
 }
 
 sub update_post {
@@ -139,6 +187,11 @@ sub traverse_thread {
     if (@{$p->{children}}) {
         $depth++;
         foreach my $c (@{$p->{children}}) {
+            my $response_time = &diff_ts($posts{$c}->{created}, $p->{created});
+            $authors{$p->{author}}->{response_times} = [] if (!$authors{$p->{author}}->{response_times});
+            push @{$authors{$p->{author}}->{response_times}}, $response_time;
+            $total_response_time += $response_time;
+            $total_responses++;
             ($size, $depth, $authors) =
               &traverse_thread($posts{$c}, $size, $depth, $authors)
           }
@@ -147,7 +200,8 @@ sub traverse_thread {
 }
 
 sub author_stats {
-    my @author_dates = @{shift()};
+    my $a = shift;
+    my @author_dates = @{$authors{$a}->{posts}};
 
     my $total = 0;
     my %dates;
@@ -156,7 +210,8 @@ sub author_stats {
         $dates{$d} = $dates{$d} ? $dates{$d} + 1 : 0;
     }
     my $days = keys %dates;
-    return ($total, $total / $days, \%dates);
+    my $mean_response_time = mean(@{$authors{$a}->{response_times}});
+    return ($total, $days, $mean_response_time);
 }
 
 __END__
@@ -171,7 +226,7 @@ Version 1.0.0
 
 =head1 USAGE
 
-  lqt-analytics.pl [-dt]
+  lqt-analytics.pl [-adt]
 
 =head1 DATA STRUCTURES
 
